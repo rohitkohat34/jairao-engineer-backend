@@ -27,7 +27,7 @@ export const getServiceById = async (req, res) => {
 // Create a new service
 export const createService = async (req, res) => {
   try {
-    const { title, price, rating, category, userId, mobileNumber } = req.body;
+    const { title, price, rating, category, userId, mobileNumber, itemId } = req.body;
 
     const newService = new Service({
       title,
@@ -36,6 +36,7 @@ export const createService = async (req, res) => {
       category,
       userId,
       mobileNumber, // Include mobileNumber
+      itemId,
     });
 
     await newService.save();
