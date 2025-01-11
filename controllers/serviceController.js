@@ -1,5 +1,6 @@
 // controllers/serviceController.js
 import Service from '../models/Service.js';
+import userModel from '../models/userModel.js';
 
 // Get all services
 export const getAllServices = async (req, res) => {
@@ -27,15 +28,15 @@ export const getServiceById = async (req, res) => {
 // Create a new service
 export const createService = async (req, res) => {
   try {
-    const { title, price, rating, category, userId, mobileNumber, itemId } = req.body;
-
+    const { title, price, rating, category, userId, itemId } = req.body;
+    const user = await userModel.findById(userId);
     const newService = new Service({
       title,
       price,
       rating,
       category,
       userId,
-      mobileNumber, // Include mobileNumber
+      mobileNumber: user.phone, // Include mobileNumber
       itemId,
     });
 

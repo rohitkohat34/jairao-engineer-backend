@@ -59,7 +59,7 @@ const placeOrder = async (req, res) => {
         rating: 4.6,
         category: 'Installation',
         userId: req.body.userId,
-        mobileNumber: '9876543210', // Replace with actual mobile number
+        mobileNumber: req.body.address.phone, // Replace with actual mobile number
         itemId: item._id,
         quantity: item.quantity,
         amount: 499 * item.quantity,
