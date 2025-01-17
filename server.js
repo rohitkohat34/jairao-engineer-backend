@@ -1,6 +1,5 @@
 import express from "express"
-import { PeerServer } from 'peer';
-import path from 'path';
+
 import cors from "cors"
 
 import { connectDB } from "./config/db.js"
@@ -15,7 +14,7 @@ import serviceRoutes from './routes/serviceRoutes.js';
 const app = express()
 const port = 4000
 
-const peerServer = PeerServer({ port: 9000, path: '/myapp' });
+
 
 //middleware
 app.use(express.json())

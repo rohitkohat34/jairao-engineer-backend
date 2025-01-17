@@ -56,6 +56,18 @@ const removeFood = async (req, res) => {
     res.json({ success: false, message: "Error" })
   }
 }
+const updateFoodPrice = async (req, res) => {
+  try {
+    const { id, price } = req.body;
+    if (!id || price === undefined) {
+      return res.status(400).json({ success: false, message: "Invalid data" });
+    }
+    await foodModel.findByIdAndUpdate(id, { price });
+    res.json({ success: true, message: "Price updated successfully." });
+  } catch (error) {
+    console.error("Error updating price:", error);
+    res.status(500).json({ success: false, message: "Error updating price." });
+  }
+};
 
-
-export { addFood, listFood, removeFood }
+export { addFood, listFood, removeFood, updateFoodPrice }
