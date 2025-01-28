@@ -14,13 +14,7 @@ const addFood = async (req, res) => {
     price: req.body.price,
     discount: req.body.discount,
     category: req.body.category,
-    image: image_filename
-    name:req.body.name,
-    description:req.body.description,
-    price:req.body.price,
-    discount: req.body.discount,
-    category:req.body.category,
-    image:image_filename
+    image: image_filename,
   })
 
   //add food item
