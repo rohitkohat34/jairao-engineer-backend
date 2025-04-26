@@ -5,10 +5,16 @@ import {
   getServiceById,
   createService,
   updateService,
-  deleteService
+  deleteService,
+  getServiceReminders,
+  
 } from '../controllers/serviceController.js';
 
+
 const router = express.Router();
+
+// Route to fetch services needing reminders (Move this above /:id)
+router.get('/reminders', getServiceReminders);
 
 // GET all services
 router.get('/', getAllServices);

@@ -16,6 +16,7 @@ const serviceSchema = mongoose.Schema(
     orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'order' },
     payment: { type: Boolean, default: false },
     status: { type: String, default: 'pending' },
+    
   },
   { timestamps: true }
 );

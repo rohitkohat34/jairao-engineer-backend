@@ -1,12 +1,9 @@
 import foodModel from "../models/foodModel.js";
-import fs, { rmSync } from 'fs'
+import fs from 'fs';
 
-
-//add food item
-
+// ✅ Add food
 const addFood = async (req, res) => {
-
-  let image_filename = `${req.file.filename}`;
+  let image_filename = req.file.filename;
 
   const food = new foodModel({
     name: req.body.name,
@@ -14,60 +11,81 @@ const addFood = async (req, res) => {
     price: req.body.price,
     discount: req.body.discount,
     category: req.body.category,
+    brand: req.body.brand,
     image: image_filename,
-  })
-
-  //add food item
+    createdBy: req.userId
+  });
 
   try {
     await food.save();
-    res.json({ success: true, message: "product Added" })
-  } catch (error) {
-    console.log(error)
-    res.json({ success: false, message: "Error" })
-  }
-}
-
-
-//list food
-
-const listFood = async (req, res) => {
-  try {
-    const foods = await foodModel.find({});
-    res.json({ success: true, data: foods })
-  } catch (error) {
-    console.log(error)
-    res.json({ success: false, message: "Error" })
-  }
-
-}
-
-//remove food items
-
-const removeFood = async (req, res) => {
-  try {
-    const food = await foodModel.findById(req.body.id);
-    fs.unlink(`uploads/${food.image}`, () => { })
-
-    await foodModel.findByIdAndDelete(req.body.id);
-    res.json({ success: true, message: "product Removed" })
+    res.json({ success: true, message: "Product Added" });
   } catch (error) {
     console.log(error);
-    res.json({ success: false, message: "Error" })
-  }
-}
-const updateFoodPrice = async (req, res) => {
-  try {
-    const { id, price } = req.body;
-    if (!id || price === undefined) {
-      return res.status(400).json({ success: false, message: "Invalid data" });
-    }
-    await foodModel.findByIdAndUpdate(id, { price });
-    res.json({ success: true, message: "Price updated successfully." });
-  } catch (error) {
-    console.error("Error updating price:", error);
-    res.status(500).json({ success: false, message: "Error updating price." });
+    res.json({ success: false, message: "Error" });
   }
 };
 
-export { addFood, listFood, removeFood, updateFoodPrice }
+
+// ✅ List all food (public)
+const listFood = async (req, res) => {
+  try {
+    const foods = await foodModel.find(); // No user filter
+    res.json({ success: true, data: foods });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: "Error" });
+  }
+};
+
+// ✅ List food for a specific user (authentication required)
+const listUserFood = async (req, res) => {
+  try {
+    const foods = await foodModel.find({ createdBy: req.userId });
+    res.json({ success: true, data: foods });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: "Error fetching user foods" });
+  }
+};
+
+// ✅ Remove food (check ownership)
+const removeFood = async (req, res) => {
+  try {
+    const food = await foodModel.findOne({ _id: req.body.id, createdBy: req.userId });
+    if (!food) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
+
+    fs.unlink(`uploads/${food.image}`, () => {});
+    await foodModel.findByIdAndDelete(req.body.id);
+    res.json({ success: true, message: "Product Removed" });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: "Error" });
+  }
+};
+
+// ✅ Update food price (check ownership)
+const updateFoodPrice = async (req, res) => {
+  try {
+    const { id, price, discount } = req.body;
+    if (!id || price === undefined || discount === undefined) {
+      return res.status(400).json({ success: false, message: "Invalid data" });
+    }
+
+    const food = await foodModel.findOne({ _id: id, createdBy: req.userId });
+    if (!food) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
+
+    const finalPrice = price - discount;
+    await foodModel.findByIdAndUpdate(id, { price, discount, finalPrice });
+
+    res.json({ success: true, message: "Price and discount updated successfully." });
+  } catch (error) {
+    console.error("Error updating price and discount:", error);
+    res.status(500).json({ success: false, message: "Update failed." });
+  }
+};
+
+export { addFood, listFood, removeFood, updateFoodPrice, listUserFood };

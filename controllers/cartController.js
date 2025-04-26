@@ -1,6 +1,8 @@
 import userModel from "../models/userModel.js";
 
-// Add items to user cart
+const GST_RATE = 0.18; // 18% GST
+
+// Add items to user cart 
 const addToCart = async (req, res) => {
   try {
     const userData = await userModel.findById(req.body.userId);
@@ -45,7 +47,7 @@ const removeFromCart = async (req, res) => {
   }
 };
 
-// Fetch user cart data
+// Fetch user cart data with GST included
 const getCart = async (req, res) => {
   try {
     const userData = await userModel.findById(req.body.userId);
@@ -55,7 +57,20 @@ const getCart = async (req, res) => {
     }
 
     const cartData = userData.cartData || {};
-    res.json({ success: true, cartData });
+    
+    let subtotal = 0;
+    Object.entries(cartData).forEach(([itemId, quantity]) => {
+      const item = userData.food_list.find(item => item._id === itemId);
+      if (item) {
+        subtotal += item.finalPrice * quantity;
+      }
+    });
+
+    const gstAmount = subtotal * GST_RATE;  // Calculate GST (18%)
+    const total = subtotal + gstAmount;    // Calculate the total including GST
+
+    // Return cart data with subtotal, GST, and total amount
+    res.json({ success: true, cartData, subtotal, gstAmount, total });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Error" });

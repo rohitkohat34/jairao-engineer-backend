@@ -7,15 +7,23 @@ const foodSchema = new mongoose.Schema({
   discount: { type: Number, default: 0, required: true },
   finalPrice: { type: Number },
   image: { type: String, required: true },
-  category: { type: String, required: true }
-})
+  category: { type: String, required: true },
+  brand: { type: String, required: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+});
 
-// Calculate finalPrice before saving
 foodSchema.pre('save', function (next) {
   this.finalPrice = this.price - this.discount;
   next();
 });
 
-const foodModel = mongoose.models.food || mongoose.model("food", foodSchema)
+foodSchema.pre('findOneAndUpdate', function (next) {
+  const update = this.getUpdate();
+  if (update.price !== undefined || update.discount !== undefined) {
+    update.finalPrice = update.price - update.discount;
+  }
+  next();
+});
 
+const foodModel = mongoose.models.food || mongoose.model("food", foodSchema);
 export default foodModel;
