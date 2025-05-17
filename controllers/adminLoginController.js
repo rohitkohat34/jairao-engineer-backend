@@ -1,5 +1,5 @@
 import AdminLogin from '../models/adminLoginModel.js';
-
+import jwt from 'jsonwebtoken';
 // Get all admins (optional)
 export const getAdmins = async (req, res) => {
   try {
@@ -21,18 +21,18 @@ export const loginAdmin = async (req, res) => {
 
     const admin = await AdminLogin.findOne({ username });
 
-    if (!admin) {
-      console.log('No admin found with username:', username);
-      return res.status(401).json({ message: 'Invalid credentials (username)' });
+    if (!admin || admin.password !== password) {
+      return res.status(401).json({ message: 'Invalid username or password' });
     }
 
-    // For development (no hashed password)
-    if (admin.password !== password) {
-      console.log(`Incorrect password. Provided: ${password}, Expected: ${admin.password}`);
-      return res.status(401).json({ message: 'Invalid credentials (password)' });
-    }
+    // Generate JWT token
+    const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
-    res.status(200).json({ message: 'Login successful', admin });
+    res.status(200).json({
+      message: 'Login successful',
+      admin: { id: admin._id, username: admin.username },
+      token,
+    });
   } catch (err) {
     res.status(500).json({ message: 'Error logging in', error: err.message });
   }

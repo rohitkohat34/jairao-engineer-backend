@@ -17,7 +17,7 @@ import vendorUserRoutes from "./routes/vendorUserRoutes.js"
 import loginRoutes from './routes/loginRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import adminLoginRoutes from './routes/adminLoginRoutes.js'
-
+import chartRouter from './routes/chartRoutes.js'; // Import chart routes
 
 import './controllers/serviceController.js'; // To ensure cron job runs
 
@@ -51,6 +51,7 @@ app.use("/api/vendorUser", vendorUserRoutes);
 app.use('/api/vendor', loginRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/admin', adminLoginRoutes);
+app.use('/api/charts', chartRouter); // New route for charts
 
 
 app.get("/", (req, res) => {

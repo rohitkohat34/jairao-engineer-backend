@@ -93,93 +93,140 @@ const placeOrder = async (req, res) => {
 };
 
 
+const generateInvoiceNumber = async () => {
+  const today = new Date();
+  const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
+  const lastInvoice = await orderModel.findOne({ invoiceNumber: { $regex: `^INV-${dateStr}` } })
+                                      .sort({ invoiceNumber: -1 });
+  const lastInvoiceNumber = lastInvoice ? parseInt(lastInvoice.invoiceNumber.split('-')[2]) : 0;
+  const newNumber = String(lastInvoiceNumber + 1).padStart(4, '0');
+  return `INV-${dateStr}-${newNumber}`;
+};
+
 const generateInvoice = async (req, res) => {
   try {
-      const orderId = req.params.orderId;
-      const order = await orderModel.findById(orderId);
+    const orderId = req.params.orderId;
+    const order = await orderModel.findById(orderId).populate('items._id');
 
-      if (!order) {
-          return res.status(404).json({ success: false, message: 'Order not found' });
-      }
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
 
-      const invoicesDir = path.join(__dirname, '../invoices');
-      ensureDirectoryExists(invoicesDir);
-      const invoicePath = path.join(invoicesDir, `invoice-${orderId}.pdf`);
+    let invoiceNumber = order.invoiceNumber;
+    if (!invoiceNumber) {
+      invoiceNumber = await generateInvoiceNumber();
+      await orderModel.findByIdAndUpdate(orderId, { invoiceNumber });
+    }
 
-      // ✅ Return existing invoice if already generated
-      if (fs.existsSync(invoicePath)) {
-          return res.download(invoicePath);
-      }
+    const invoicesDir = path.join(__dirname, '../invoices');
+    ensureDirectoryExists(invoicesDir);
+    const invoicePath = path.join(invoicesDir, `invoice-${orderId}.pdf`);
 
-      // Calculate GST
-      const gstRate = 0.18; // 18%
-      const originalAmount = order.amount / (1 + gstRate);
-      const gstAmount = order.amount - originalAmount;
+    if (fs.existsSync(invoicePath)) {
+      return res.download(invoicePath);
+    }
 
-      // Prepare invoice data
-      const invoiceData = {
-          sender: {
-              company: "Jay Rao Engineer Solutions",
-              address: "Chota Taj Bagh Rd, near HANUMAN TEMPLE, Ayurvedic Layout, SQURE, Nagpur",
-              zip: "440024",
-              city: "Nagpur",
-              country: "India",
-              custom1: "GSTIN: 27ALVPU9654L1ZQ"
-          },
-          client: {
-              company: order.address.name || "Customer",
-              address: order.address.street,
-              zip: order.address.zip,
-              city: order.address.city,
-              country: order.address.country
-          },
-          information: {
-              number: orderId,
-              date: new Date().toISOString().split('T')[0],
-          },
-          products: order.items.map(item => ({
-              quantity: item.quantity,
-              description: item.name,
-              taxRate: 18,
-              price: item.price
-          })),
-          bottomNotice: "Thank you for your purchase! For support, contact us.",
-          settings: { currency: "INR" }
+    const gstRateAC = 0.28;
+    const gstRateOthers = 0.18;
+
+    let totalAmount = 0;
+    let totalGSTAmount = 0;
+
+    const invoiceItems = order.items.map(item => {
+      const product = item._id;
+      const quantity = item.quantity;
+
+      if (!product) return null;
+
+      const gstRate = product.category.toLowerCase() === 'ac' ? gstRateAC : gstRateOthers;
+      const basePrice = product.finalPrice;
+      const grossPrice = basePrice * quantity;
+      const gstAmount = grossPrice * gstRate;
+
+      totalAmount += grossPrice;
+      totalGSTAmount += gstAmount;
+
+      return {
+        quantity,
+        description: `${product.name} (Discount: ₹${product.discount})`,
+        taxRate: gstRate * 100,
+        price: basePrice,
+        gstAmount,
+        originalAmount: grossPrice,
       };
+    }).filter(Boolean);
 
-      // ✅ Retry mechanism for rate limits
-      let invoicePdf;
-      let attempts = 0;
-      const maxAttempts = 3;
-      const retryDelay = 5000; // 5 seconds
+    // ✅ Add delivery charge as a separate line item
+    const deliveryCharge = 2;
+    totalAmount += deliveryCharge;
+    invoiceItems.push({
+      quantity: 1,
+      description: 'Delivery Charges',
+      taxRate: 0,
+      price: deliveryCharge,
+      gstAmount: 0,
+      originalAmount: deliveryCharge
+    });
 
-      while (attempts < maxAttempts) {
-          try {
-              invoicePdf = await easyinvoice.createInvoice(invoiceData);
-              break;
-          } catch (error) {
-              if (error.statusCode === 429) { // Too Many Requests
-                  attempts++;
-                  console.warn(`Rate limit hit. Retrying in ${retryDelay / 1000} seconds...`);
-                  await new Promise(resolve => setTimeout(resolve, retryDelay));
-              } else {
-                  throw error;
-              }
-          }
+    const invoiceData = {
+      sender: {
+        company: "Jay Rao Engineer Solutions",
+        address: "Chota Taj Bagh Rd, near HANUMAN TEMPLE, Ayurvedic Layout, SQURE, Nagpur",
+        zip: "440024",
+        city: "Nagpur",
+        country: "India",
+        custom1: "GSTIN: 27ALVPU9654L1ZQ",
+        custom2: `Invoice No: ${invoiceNumber}`
+      },
+      client: {
+        company: order.address.name || "Customer",
+        address: order.address.street,
+        zip: order.address.zip,
+        city: order.address.city,
+        country: order.address.country
+      },
+      information: {
+        date: new Date().toISOString().split('T')[0]
+      },
+      products: invoiceItems,
+      bottomNotice: "Thank you for your purchase! For support, contact us.",
+      settings: { currency: "INR" }
+    };
+
+    let invoicePdf;
+    let attempts = 0;
+    const maxAttempts = 3;
+    const retryDelay = 5000;
+
+    while (attempts < maxAttempts) {
+      try {
+        invoicePdf = await easyinvoice.createInvoice(invoiceData);
+        break;
+      } catch (error) {
+        if (error.statusCode === 429) {
+          attempts++;
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        } else {
+          throw error;
+        }
       }
+    }
 
-      if (!invoicePdf) {
-          return res.status(500).json({ success: false, message: "Failed to generate invoice after multiple attempts." });
-      }
+    if (!invoicePdf) {
+      return res.status(500).json({ success: false, message: "Failed to generate invoice after retries." });
+    }
 
-      fs.writeFileSync(invoicePath, invoicePdf.pdf, 'base64');
-      res.download(invoicePath);
+    fs.writeFileSync(invoicePath, invoicePdf.pdf, 'base64');
+    res.download(invoicePath);
 
   } catch (error) {
-      console.error("Error generating invoice:", error);
-      res.status(500).json({ success: false, message: "Error generating invoice. Please try again later." });
+    console.error("Error generating invoice:", error);
+    res.status(500).json({ success: false, message: "Error generating invoice." });
   }
 };
+
+
+
 
 
 
@@ -267,11 +314,8 @@ const createdByOrders = async (req, res) => {
     const userId = req.userId;
 
     // ✅ Remove match from populate
-    const orders = await orderModel.find({})
-      .populate({
-        path: 'items.food',
-        select: 'createdBy name price', // Only fetch required fields
-      });
+    const orders = await orderModel.find({}).populate('items._id');
+
 
     const filteredOrders = [];
 
@@ -279,11 +323,11 @@ const createdByOrders = async (req, res) => {
       const filteredItems = [];
 
       for (const item of order.items) {
-        if (item.food && item.food.createdBy?.toString() === userId) {
+        if (item._id && item._id.createdBy?.toString() === userId) {
           filteredItems.push({
-            name: item.food.name,
+            name: item._id.name,
             quantity: item.quantity,
-            price: item.food.price,
+            price: item._id.price,
           });
         }
       }
@@ -316,6 +360,21 @@ const createdByOrders = async (req, res) => {
   }
 };
 
+const deleteOrder = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+    const deletedOrder = await orderModel.findByIdAndDelete(orderId);
+
+    if (!deletedOrder) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    res.json({ success: true, message: "Order deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting order:", error);
+    res.status(500).json({ success: false, message: "Error deleting order" });
+  }
+};
 
 
 
@@ -324,4 +383,4 @@ const createdByOrders = async (req, res) => {
 
 
 
-export { placeOrder, verifyOrder, userOrders, listOrders, updateStatus, generateInvoice,cancelOrder,createdByOrders }
+export { placeOrder, verifyOrder, userOrders, listOrders, updateStatus, generateInvoice,cancelOrder,createdByOrders , deleteOrder }

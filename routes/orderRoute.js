@@ -1,7 +1,7 @@
 import express from "express"
 import authMiddleware from "../middleware/auth.js"
 
-import { placeOrder, verifyOrder, userOrders, listOrders, updateStatus,generateInvoice,cancelOrder,createdByOrders } from "../controllers/orderController.js"
+import { placeOrder, verifyOrder, userOrders, listOrders, updateStatus,generateInvoice,cancelOrder,createdByOrders,deleteOrder } from "../controllers/orderController.js"
 
 const orderRouter = express.Router();
 
@@ -14,6 +14,7 @@ orderRouter.get('/list',listOrders);
 orderRouter.post('/status',updateStatus)
 orderRouter.post("/cancel", authMiddleware, cancelOrder); // New route for canceling orders
 orderRouter.post("/vendororders", authMiddleware, createdByOrders);
+orderRouter.post("/delete", authMiddleware, deleteOrder);
 
 
 

@@ -13,7 +13,8 @@ const addFood = async (req, res) => {
     category: req.body.category,
     brand: req.body.brand,
     image: image_filename,
-    createdBy: req.userId
+    createdBy: req.userId,
+    availability: req.body.availability,   // Adding availability field
   });
 
   try {
@@ -24,7 +25,6 @@ const addFood = async (req, res) => {
     res.json({ success: false, message: "Error" });
   }
 };
-
 
 // ✅ List all food (public)
 const listFood = async (req, res) => {
@@ -37,14 +37,16 @@ const listFood = async (req, res) => {
   }
 };
 
-// ✅ List food for a specific user (authentication required)
+// ✅ List food for a specific user (only their created items)
 const listUserFood = async (req, res) => {
   try {
-    const foods = await foodModel.find({ createdBy: req.userId });
+    const userId = req.userId;
+
+    const foods = await foodModel.find({ createdBy: userId });
     res.json({ success: true, data: foods });
   } catch (error) {
-    console.log(error);
-    res.json({ success: false, message: "Error fetching user foods" });
+    console.error("Error fetching user foods:", error);
+    res.status(500).json({ success: false, message: "Error fetching user foods" });
   }
 };
 

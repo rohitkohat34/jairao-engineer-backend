@@ -2,6 +2,13 @@ import fs from "fs";
 import PDFDocument from "pdfkit";
 import Inquiry from "../models/inquiryModel.js";
 import path from "path";
+import twilio from "twilio";
+
+// Initialize Twilio client
+const twilioClient = twilio(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+);
 
 // Function to generate PDF
 const generatePDF = (inquiry) => {
@@ -25,7 +32,7 @@ const generatePDF = (inquiry) => {
   });
 };
 
-// Store Inquiry Data
+// Store Inquiry and Send WhatsApp Message with Raw Text
 export const createInquiry = async (req, res) => {
   try {
     const { name, email, phone, address, message } = req.body;
@@ -42,8 +49,35 @@ export const createInquiry = async (req, res) => {
     inquiry.pdfUrl = `http://localhost:3000/${pdfPath}`;
     await inquiry.save();
 
-    res.status(201).json({ message: "Inquiry submitted successfully!", pdfUrl: inquiry.pdfUrl });
+    // Construct detailed WhatsApp message
+    const twilioMessage = `
+📩 *New Inquiry Received*
+
+👤 *Name:* ${name}
+📧 *Email:* ${email}
+📱 *Phone:* ${phone}
+🏠 *Address:* ${address}
+📝 *Message:* ${message}
+
+🔗 PDF: ${inquiry.pdfUrl}
+    `;
+
+    // Send WhatsApp message using Twilio Sandbox
+    await twilioClient.messages.create({
+      from: 'whatsapp:+14155238886',  // Twilio Sandbox WhatsApp number
+      to: 'whatsapp:+917083736905',   // Replace with a number that has joined sandbox
+      body: twilioMessage
+    });
+
+    console.log("WhatsApp message sent successfully");
+
+    res.status(201).json({
+      message: "Inquiry submitted successfully!",
+      pdfUrl: inquiry.pdfUrl,
+    });
+
   } catch (error) {
+    console.error("Error sending WhatsApp message:", error);
     res.status(500).json({ message: "Server Error: " + error.message });
   }
 };

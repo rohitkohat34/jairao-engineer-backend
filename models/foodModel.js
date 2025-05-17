@@ -9,9 +9,13 @@ const foodSchema = new mongoose.Schema({
   image: { type: String, required: true },
   category: { type: String, required: true },
   brand: { type: String, required: true },
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  availability: { type: Boolean, default: true }
+}, {
+  timestamps: true // ✅ Enables createdAt and updatedAt automatically
 });
 
+// Calculate finalPrice before save/update
 foodSchema.pre('save', function (next) {
   this.finalPrice = this.price - this.discount;
   next();
