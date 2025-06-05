@@ -9,7 +9,7 @@ import 'dotenv/config'
 import cartRouter from "./routes/cartRoute.js"
 import orderRouter from "./routes/orderRoute.js"
 import serviceRoutes from './routes/serviceRoutes.js'
-import technicianRoutes from './routes/technicianRoutes.js'
+
 import contactRoutes from "./routes/contactRoutes.js";
 import inquiryRoutes from "./routes/inquiryRoutes.js";
 import feedbackRoutes from "./routes/feedbackRoutes.js"
@@ -18,7 +18,7 @@ import loginRoutes from './routes/loginRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import adminLoginRoutes from './routes/adminLoginRoutes.js'
 import chartRouter from './routes/chartRoutes.js'; // Import chart routes
-
+import vendorPaymentRoutes from './routes/vendorPaymentRoutes.js'
 import './controllers/serviceController.js'; // To ensure cron job runs
 
 //app config
@@ -43,7 +43,7 @@ app.use("/api/user", userRouter)
 app.use("/api/cart", cartRouter)
 app.use("/api/order", orderRouter)
 app.use('/api/services', serviceRoutes);
-app.use('/api/technician', technicianRoutes);
+
 app.use("/api/contact", contactRoutes);
 app.use("/api/inquiries", inquiryRoutes);
 app.use("/api/feedback", feedbackRoutes);
@@ -52,7 +52,7 @@ app.use('/api/vendor', loginRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/admin', adminLoginRoutes);
 app.use('/api/charts', chartRouter); // New route for charts
-
+app.use('/api/vendorPayments',vendorPaymentRoutes)
 
 app.get("/", (req, res) => {
   res.send("API Working")

@@ -1,9 +1,9 @@
 import foodModel from "../models/foodModel.js";
 import fs from 'fs';
 
-// ✅ Add food
+// ✅ Add food with multiple images
 const addFood = async (req, res) => {
-  let image_filename = req.file.filename;
+  const image_filenames = req.files.map(file => file.filename);
 
   const food = new foodModel({
     name: req.body.name,
@@ -12,9 +12,9 @@ const addFood = async (req, res) => {
     discount: req.body.discount,
     category: req.body.category,
     brand: req.body.brand,
-    image: image_filename,
+    images: image_filenames, // Store multiple images
     createdBy: req.userId,
-    availability: req.body.availability,   // Adding availability field
+    availability: req.body.availability,
   });
 
   try {
@@ -58,7 +58,8 @@ const removeFood = async (req, res) => {
       return res.status(403).json({ success: false, message: "Unauthorized" });
     }
 
-    fs.unlink(`uploads/${food.image}`, () => {});
+    // Delete image files from the server
+    food.images.forEach(image => fs.unlink(`uploads/${image}`, () => {}));
     await foodModel.findByIdAndDelete(req.body.id);
     res.json({ success: true, message: "Product Removed" });
   } catch (error) {

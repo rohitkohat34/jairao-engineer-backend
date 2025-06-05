@@ -16,7 +16,8 @@ const orderSchema = new mongoose.Schema({
   payment: { type: Boolean, default: false },
   paymentMethod: { type: String, default: "Online" },
   canceled: { type: Boolean, default: false },
-  invoiceNumber: { type: String, unique: true, sparse: true } // ✅ Add this line
+  invoiceNumber: { type: String, unique: true, sparse: true }, // ✅ Add this line
+  
 });
 
 

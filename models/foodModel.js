@@ -6,7 +6,7 @@ const foodSchema = new mongoose.Schema({
   price: { type: Number, required: true },
   discount: { type: Number, default: 0, required: true },
   finalPrice: { type: Number },
-  image: { type: String, required: true },
+  images: [{ type: String, required: true }], // Update to handle multiple images
   category: { type: String, required: true },
   brand: { type: String, required: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
